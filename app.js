@@ -179,7 +179,7 @@ function outputTextFromResponse(data) {
 }
 
 function parseJson(text) {
-  const cleaned = String(text || "").trim().replace(/^\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`$/, "");
+  const cleaned = String(text || "").trim().replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
   try { return JSON.parse(cleaned); } catch (error) { throw new Error("JSON 解析失敗：Gemini 回傳可能不完整或不是 JSON。"); }
 }
 
