@@ -1,5 +1,6 @@
 const API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions";
-const MODEL = "gemini-3.8-flash";
+const MODEL_CANDIDATES = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"];
+const PRIMARY_MODEL = MODEL_CANDIDATES[0];
 
 const apiKeyInput = document.querySelector("#api-key");
 const videoUrlInput = document.querySelector("#video-url");
@@ -146,6 +147,7 @@ function redact(value, secret) {
 
 async function callGemini(apiKey, payload) {
   let response;
+  const requestModel = payload.model || PRIMARY_MODEL;
   try {
     response = await fetch(API_ENDPOINT, {
       method: "POST",
@@ -167,7 +169,13 @@ async function callGemini(apiKey, payload) {
     if (response.status === 401 || response.status === 403) prefix = "API Key 無效或沒有權限";
     if (response.status === 429) prefix = "API quota 或速率限制已到達";
     if (response.status === 413 || response.status === 504) prefix = "影片內容過長或分析逾時";
-    throw new Error(`${prefix}：${redact(apiMessage, apiKey)}`);
+    const safeMessage = redact(apiMessage, apiKey);
+    const apiError = new Error(prefix + "：" + safeMessage);
+    apiError.status = response.status;
+    apiError.model = requestModel;
+    apiError.transient = [429, 500, 502, 503, 504].includes(response.status) || /high demand|temporar|overload/i.test(safeMessage);
+    apiError.modelUnavailable = response.status === 404 || /model.*(not found|unsupported)|not found|does not exist/i.test(safeMessage);
+    throw apiError;
   }
   return body;
 }
@@ -304,7 +312,7 @@ function renderContentResult(data, rawText) {
   musicResult.classList.add("hidden");
   contentResult.classList.remove("hidden");
   result.classList.remove("hidden");
-  lastContentAnalysis = { data, url: videoUrlInput.value.trim() };
+  lastContentAnalysis = { data, url: videoUrlInput.value.trim(), model };
 }
 
 function buildHandoff({ data, url }) {
@@ -401,10 +409,14 @@ testKeyButton.addEventListener("click", async () => {
   setBusy(testKeyButton, true, "測試中…", "測試 API Key");
   setStatus(keyStatus, "正在連線 Gemini API…", "loading");
   try {
-    const data = await callGemini(apiKey, { model: MODEL, input: "Reply with exactly: GEMINI_API_OK" });
+    const { data, model } = await callWithModelFallback(
+      apiKey,
+      (candidateModel) => ({ model: candidateModel, input: "Reply with exactly: GEMINI_API_OK" }),
+      (candidateModel, index, total) => setStatus(keyStatus, "正在連線 Gemini API（" + candidateModel + "，第 " + (index + 1) + "/" + total + " 次）…", "loading")
+    );
     const text = outputTextFromResponse(data);
     if (!text.includes("GEMINI_API_OK")) throw new Error("API 有回應，但內容不符合預期：" + text);
-    setStatus(keyStatus, `API Key 有效，模型回應：${text.trim()}`, "success");
+    setStatus(keyStatus, "API Key 有效（模型：" + model + "），模型回應：" + text.trim(), "success");
     setStatus(videoStatus, "可以開始分析公開 YouTube 影片", "success");
   } catch (error) {
     setStatus(keyStatus, `測試失敗：${error.message}`, "error");
@@ -447,20 +459,24 @@ analyzeVideoButton.addEventListener("click", async () => {
       "If the video is Korean, retain Korean sentences or terms in original_terms where important. Use a complete timeline rather than a short transcript excerpt."
     ].join("\n");
 
-    const data = await callGemini(apiKey, {
-      model: MODEL,
-      input: [{ type: "video", uri: videoUrl }, { type: "text", text: contentMode ? contentPrompt : musicPrompt }],
-      response_format: { type: "text", mime_type: "application/json", schema: contentMode ? contentAnalysisSchema : genreSchema }
-    });
+    const { data, model } = await callWithModelFallback(
+      apiKey,
+      (candidateModel) => ({
+        model: candidateModel,
+        input: [{ type: "video", uri: videoUrl }, { type: "text", text: contentMode ? contentPrompt : musicPrompt }],
+        response_format: { type: "text", mime_type: "application/json", schema: contentMode ? contentAnalysisSchema : genreSchema }
+      }),
+      (candidateModel, index, total) => setStatus(videoStatus, "正在使用 " + candidateModel + "（第 " + (index + 1) + "/" + total + " 次）…", "loading")
+    );
 
     const rawText = outputTextFromResponse(data);
     const parsed = parseJson(rawText);
     if (contentMode) {
       renderContentResult(parsed, rawText);
-      setStatus(videoStatus, "影片內容解析完成；尚未修改任何播放清單。", "success");
+      setStatus(videoStatus, "影片內容解析完成（模型：" + model + "）；尚未修改任何播放清單。", "success");
     } else {
       renderMusicResult(parsed, rawText);
-      setStatus(videoStatus, "音樂分類完成；尚未修改任何播放清單。", "success");
+      setStatus(videoStatus, "音樂分類完成（模型：" + model + "）；尚未修改任何播放清單。", "success");
     }
   } catch (error) {
     setStatus(videoStatus, `分析失敗：${error.message}`, "error");
