@@ -288,7 +288,7 @@ function evidenceBadge(value) {
   return badge;
 }
 
-function renderContentResult(data, rawText) {
+function renderContentResult(data, rawText, model = PRIMARY_MODEL) {
   const video = data.video || {};
   const summary = data.summary || {};
   document.querySelector("#result-heading").textContent = displayValue(video.title) || "影片內容解析";
@@ -500,7 +500,7 @@ analyzeVideoButton.addEventListener("click", async () => {
     const rawText = outputTextFromResponse(data);
     const parsed = parseJson(rawText);
     if (contentMode) {
-      renderContentResult(parsed, rawText);
+      renderContentResult(parsed, rawText, model);
       setStatus(videoStatus, "影片內容解析完成（模型：" + model + "）；尚未修改任何播放清單。", "success");
     } else {
       renderMusicResult(parsed, rawText);
