@@ -131,7 +131,7 @@ let lastContentAnalysis = null;
 
 function setStatus(element, message, kind = "neutral") {
   element.textContent = message;
-  element.className = \`status \${kind}\`;
+  element.className = `status ${kind}`;
 }
 
 function setBusy(button, busy, busyText, normalText) {
@@ -161,13 +161,13 @@ async function callGemini(apiKey, payload) {
   try { body = bodyText ? JSON.parse(bodyText) : {}; } catch { body = { raw: bodyText }; }
 
   if (!response.ok) {
-    const apiMessage = body?.error?.message || body?.raw || \`HTTP \${response.status}\`;
+    const apiMessage = body?.error?.message || body?.raw || `HTTP ${response.status}`;
     let prefix = "Gemini API 錯誤";
     if (response.status === 400) prefix = "請求格式或影片不受支援";
     if (response.status === 401 || response.status === 403) prefix = "API Key 無效或沒有權限";
     if (response.status === 429) prefix = "API quota 或速率限制已到達";
     if (response.status === 413 || response.status === 504) prefix = "影片內容過長或分析逾時";
-    throw new Error(\`\${prefix}：\${redact(apiMessage, apiKey)}\`);
+    throw new Error(`${prefix}：${redact(apiMessage, apiKey)}`);
   }
   return body;
 }
@@ -179,7 +179,7 @@ function outputTextFromResponse(data) {
 }
 
 function parseJson(text) {
-  const cleaned = String(text || "").trim().replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
+  const cleaned = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   try { return JSON.parse(cleaned); } catch (error) { throw new Error("JSON 解析失敗：Gemini 回傳可能不完整或不是 JSON。"); }
 }
 
@@ -206,7 +206,7 @@ function renderMusicResult(data, rawText) {
   document.querySelector("#result-mood").textContent = displayValue(data.mood);
   document.querySelector("#result-reasoning").textContent = displayValue(data.reasoning);
   const confidence = Number(data.confidence);
-  document.querySelector("#confidence").textContent = Number.isFinite(confidence) ? \`信心度 \${Math.round(Math.max(0, Math.min(1, confidence)) * 100)}%\` : "信心度未提供";
+  document.querySelector("#confidence").textContent = Number.isFinite(confidence) ? `信心度 ${Math.round(Math.max(0, Math.min(1, confidence)) * 100)}%` : "信心度未提供";
   document.querySelector("#raw-output").textContent = rawText;
   musicResult.classList.remove("hidden");
   contentResult.classList.add("hidden");
@@ -256,42 +256,42 @@ function renderContentResult(data, rawText) {
   const video = data.video || {};
   const summary = data.summary || {};
   document.querySelector("#result-heading").textContent = displayValue(video.title) || "影片內容解析";
-  document.querySelector("#confidence").textContent = \`\${displayValue(video.language)}｜\${displayValue(video.duration)}\`;
+  document.querySelector("#confidence").textContent = `${displayValue(video.language)}｜${displayValue(video.duration)}`;
   document.querySelector("#content-overall-summary").textContent = displayValue(summary.overall_summary);
   document.querySelector("#content-author-conclusion").textContent = displayValue(summary.author_conclusion);
 
   renderStack("#content-term-checks", data.target_term_checks, (item) => makeCard([
-    textLine(item.term, \`\${displayValue(item.status)}｜\${displayValue(item.timestamp)}\`),
+    textLine(item.term, `${displayValue(item.status)}｜${displayValue(item.timestamp)}`),
     textLine("說明", item.details),
     evidenceBadge(item.evidence_type)
   ]));
 
   renderStack("#content-timeline", data.timeline, (item) => makeCard([
-    textLine(\`\${displayValue(item.start_time)}–\${displayValue(item.end_time)}\`, item.topic),
+    textLine(`${displayValue(item.start_time)}–${displayValue(item.end_time)}`, item.topic),
     textLine("中文摘要", item.zh_tw_summary),
     textLine("原文術語", item.original_terms),
-    evidenceBadge(\`\${displayValue(item.evidence_type)}｜信心度 \${displayValue(item.confidence)}\`)
+    evidenceBadge(`${displayValue(item.evidence_type)}｜信心度 ${displayValue(item.confidence)}`)
   ]));
 
   renderStack("#content-numbers", data.numbers, (item) => makeCard([
-    textLine(\`\${displayValue(item.timestamp)}｜\${displayValue(item.subject)}\`, item.value),
+    textLine(`${displayValue(item.timestamp)}｜${displayValue(item.subject)}`, item.value),
     textLine("脈絡", item.context),
     evidenceBadge(item.evidence_type)
   ]));
 
   renderStack("#content-comparisons", data.comparisons, (item) => makeCard([
-    textLine(\`\${displayValue(item.timestamp)}｜\${displayValue(item.target_a)} vs \${displayValue(item.target_b)}\`, item.result),
+    textLine(`${displayValue(item.timestamp)}｜${displayValue(item.target_a)} vs ${displayValue(item.target_b)}`, item.result),
     textLine("說明", item.explanation),
     evidenceBadge(item.evidence_type)
   ]));
 
   renderStack("#content-issues", data.issues, (item) => makeCard([
-    textLine(\`\${displayValue(item.timestamp)}｜\${displayValue(item.subject)}\`, \`[\${displayValue(item.type)}] \${displayValue(item.description)}\`)
+    textLine(`${displayValue(item.timestamp)}｜${displayValue(item.subject)}`, `[${displayValue(item.type)}] ${displayValue(item.description)}`)
   ]));
 
   const uncertain = [...(data.uncertain_items || [])];
   (data.timeline || []).filter((item) => Number(item.confidence) < 0.6).forEach((item) => uncertain.push({
-    timestamp: \`\${item.start_time}–\${item.end_time}\`,
+    timestamp: `${item.start_time}–${item.end_time}`,
     content: item.topic + "：" + item.zh_tw_summary,
     reason: "時間軸項目的信心度低於 0.6"
   }));
@@ -310,7 +310,7 @@ function renderContentResult(data, rawText) {
 function buildHandoff({ data, url }) {
   const video = data.video || {};
   const summary = data.summary || {};
-  const line = (label, value) => \`- \${label}: \${displayValue(value)}\`;
+  const line = (label, value) => `- ${label}: ${displayValue(value)}`;
   const sections = [
     "# YouTube Video Analysis",
     "",
@@ -327,27 +327,27 @@ function buildHandoff({ data, url }) {
     displayValue(summary.author_conclusion),
     "",
     "## Term Checks",
-    ...(data.target_term_checks || []).map((item) => line(item.term, \`\${item.status}; \${item.timestamp}; \${item.details}; \${item.evidence_type}\`)),
+    ...(data.target_term_checks || []).map((item) => line(item.term, `${item.status}; ${item.timestamp}; ${item.details}; ${item.evidence_type}`)),
     "",
     "## Timeline",
     ...(data.timeline || []).map((item) => [
-      \`### \${item.start_time}–\${item.end_time} — \${item.topic}\`,
+      `### ${item.start_time}–${item.end_time} — ${item.topic}`,
       line("Original terms", item.original_terms),
       line("Summary", item.zh_tw_summary),
-      line("Evidence", \`\${item.evidence_type}; confidence \${item.confidence}\`),
+      line("Evidence", `${item.evidence_type}; confidence ${item.confidence}`),
       ""
     ].join("\n")),
     "## Numerical Data",
-    ...(data.numbers || []).map((item) => line(\`\${item.timestamp} / \${item.subject}\`, \`\${item.value}; \${item.context}; \${item.evidence_type}\`)),
+    ...(data.numbers || []).map((item) => line(`${item.timestamp} / ${item.subject}`, `${item.value}; ${item.context}; ${item.evidence_type}`)),
     "",
     "## Comparisons",
-    ...(data.comparisons || []).map((item) => line(\`\${item.timestamp}: \${item.target_a} vs \${item.target_b}\`, \`\${item.result}; \${item.explanation}; \${item.evidence_type}\`)),
+    ...(data.comparisons || []).map((item) => line(`${item.timestamp}: ${item.target_a} vs ${item.target_b}`, `${item.result}; ${item.explanation}; ${item.evidence_type}`)),
     "",
     "## Bugs / Concerns",
-    ...(data.issues || []).map((item) => line(\`\${item.timestamp} / \${item.subject}\`, \`[\${item.type}] \${item.description}\`)),
+    ...(data.issues || []).map((item) => line(`${item.timestamp} / ${item.subject}`, `[${item.type}] ${item.description}`)),
     "",
     "## Uncertain Items",
-    ...(data.uncertain_items || []).map((item) => line(item.timestamp, \`\${item.content}; \${item.reason}\`)),
+    ...(data.uncertain_items || []).map((item) => line(item.timestamp, `${item.content}; ${item.reason}`)),
     "",
     "## Analysis Request",
     "請根據以上影片解析資料：",
@@ -404,10 +404,10 @@ testKeyButton.addEventListener("click", async () => {
     const data = await callGemini(apiKey, { model: MODEL, input: "Reply with exactly: GEMINI_API_OK" });
     const text = outputTextFromResponse(data);
     if (!text.includes("GEMINI_API_OK")) throw new Error("API 有回應，但內容不符合預期：" + text);
-    setStatus(keyStatus, \`API Key 有效，模型回應：\${text.trim()}\`, "success");
+    setStatus(keyStatus, `API Key 有效，模型回應：${text.trim()}`, "success");
     setStatus(videoStatus, "可以開始分析公開 YouTube 影片", "success");
   } catch (error) {
-    setStatus(keyStatus, \`測試失敗：\${error.message}\`, "error");
+    setStatus(keyStatus, `測試失敗：${error.message}`, "error");
     setStatus(videoStatus, "請先修正 API Key、權限、模型或 quota 問題", "neutral");
   } finally {
     setBusy(testKeyButton, false, "測試中…", "測試 API Key");
@@ -463,7 +463,7 @@ analyzeVideoButton.addEventListener("click", async () => {
       setStatus(videoStatus, "音樂分類完成；尚未修改任何播放清單。", "success");
     }
   } catch (error) {
-    setStatus(videoStatus, \`分析失敗：\${error.message}\`, "error");
+    setStatus(videoStatus, `分析失敗：${error.message}`, "error");
   } finally {
     setBusy(analyzeVideoButton, false, "分析中…", contentMode ? "解析影片內容" : "分析曲風");
   }
