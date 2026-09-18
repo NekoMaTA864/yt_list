@@ -180,6 +180,34 @@ async function callGemini(apiKey, payload) {
   return body;
 }
 
+
+const FALLBACK_DELAY_MS = 700;
+
+function canTryNextModel(error) {
+  return Boolean(error?.transient || error?.modelUnavailable);
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function callWithModelFallback(apiKey, buildPayload, onAttempt) {
+  let lastError;
+  for (let index = 0; index < MODEL_CANDIDATES.length; index += 1) {
+    const model = MODEL_CANDIDATES[index];
+    onAttempt?.(model, index, MODEL_CANDIDATES.length);
+    try {
+      const data = await callGemini(apiKey, buildPayload(model));
+      return { data, model };
+    } catch (error) {
+      lastError = error;
+      if (!canTryNextModel(error) || index === MODEL_CANDIDATES.length - 1) throw error;
+      await wait(FALLBACK_DELAY_MS * (index + 1));
+    }
+  }
+  throw lastError;
+}
+
 function outputTextFromResponse(data) {
   if (typeof data?.output_text === "string") return data.output_text;
   const outputStep = [...(data?.steps || [])].reverse().find((step) => step.type === "model_output");
