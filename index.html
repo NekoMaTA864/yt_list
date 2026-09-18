@@ -1,98 +1,101 @@
 <!doctype html>
 <html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Gemini API 與 YouTube 公開影片音樂分類測試工具" />
-    <title>YT List｜Gemini 音樂分類測試</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <main class="shell">
-      <header class="hero">
-        <p class="eyebrow">YT LIST / GEMINI TEST LAB</p>
-        <h1>Gemini 音樂分類測試</h1>
-        <p class="hero-copy">
-          先驗證 API Key，再分析公開 YouTube 影片。這個版本不會修改任何播放清單。
-        </p>
-      </header>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Gemini API 與 YouTube 公開影片分析工具">
+  <title>YT List｜Gemini Test Lab</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">YT LIST / GEMINI TEST LAB</p>
+      <h1>Gemini YouTube 分析工作台</h1>
+      <p class="hero-copy">先驗證 API Key，再分析公開 YouTube 影片。API Key 只存在目前分頁記憶體中，本工具不會修改播放清單。</p>
+    </header>
 
-      <section class="warning" aria-label="安全提醒">
-        <strong>測試用安全提醒</strong>
-        <p>
-          API Key 只會暫存在目前瀏覽器分頁的記憶體中，不會寫入 localStorage，也不會送到本網站的伺服器。
-          但 GitHub Pages 是前端網站，請勿輸入綁定付費帳單或其他重要服務的 Key。
-        </p>
-      </section>
+    <section class="warning" aria-label="安全提醒">
+      <strong>BYOK 安全提醒</strong>
+      <p>API Key 不會寫入 localStorage、網址或 repository，也不會送到本網站伺服器。請勿輸入綁定付費帳單或其他重要服務的 Key。</p>
+    </section>
 
-      <section class="card" aria-labelledby="key-title">
-        <div class="section-heading">
-          <div>
-            <p class="step-label">STEP 1</p>
-            <h2 id="key-title">驗證 Gemini API Key</h2>
-          </div>
-          <span class="badge">不修改資料</span>
+    <section class="card" aria-labelledby="key-title">
+      <div class="section-heading">
+        <div><p class="step-label">STEP 1</p><h2 id="key-title">驗證 Gemini API Key</h2></div>
+        <span class="badge">不修改資料</span>
+      </div>
+      <div class="key-row">
+        <label class="sr-only" for="api-key">Gemini API Key</label>
+        <input id="api-key" type="password" autocomplete="off" placeholder="貼上 Gemini API Key（不會保存）">
+        <button id="toggle-key" class="button secondary" type="button">顯示</button>
+        <button id="test-key" class="button" type="button">測試 API Key</button>
+        <button id="clear-key" class="button ghost" type="button">清除</button>
+      </div>
+      <p id="key-status" class="status neutral" role="status">尚未測試 API Key</p>
+    </section>
+
+    <section class="card" aria-labelledby="video-title">
+      <div class="section-heading">
+        <div><p class="step-label">STEP 2</p><h2 id="video-title">選擇分析模式</h2></div>
+        <span class="badge">公開 YouTube URL</span>
+      </div>
+      <div class="mode-row">
+        <label for="analysis-mode">模式</label>
+        <select id="analysis-mode">
+          <option value="music" selected>音樂分類</option>
+          <option value="content">影片內容解析</option>
+        </select>
+        <p id="mode-description" class="field-help">分析影片中的實際音訊與曲風，不只看標題或上傳者資訊。</p>
+      </div>
+      <label for="video-url">YouTube 影片網址</label>
+      <div class="url-row">
+        <input id="video-url" type="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+        <button id="analyze-video" class="button" type="button">分析曲風</button>
+      </div>
+      <p id="video-status" class="status neutral" role="status">請先通過 API Key 測試</p>
+    </section>
+
+    <section id="result" class="card result hidden" aria-live="polite">
+      <div class="section-heading">
+        <div><p class="step-label">RESULT</p><h2 id="result-heading">分析結果</h2></div>
+        <span id="confidence" class="badge">尚未分析</span>
+      </div>
+
+      <div id="music-result">
+        <div class="result-grid">
+          <div><span>標題</span><strong id="result-title">—</strong></div>
+          <div><span>藝人／作者</span><strong id="result-artist">—</strong></div>
+          <div><span>主要曲風</span><strong id="result-primary">—</strong></div>
+          <div><span>次要曲風</span><strong id="result-secondary">—</strong></div>
+          <div><span>格式</span><strong id="result-format">—</strong></div>
+          <div><span>語言</span><strong id="result-language">—</strong></div>
+          <div><span>情緒</span><strong id="result-mood">—</strong></div>
         </div>
+        <div class="prose-block"><span>判定理由</span><p id="result-reasoning">—</p></div>
+      </div>
 
-        <label for="api-key">Gemini API Key</label>
-        <div class="input-row">
-          <input id="api-key" type="password" autocomplete="off" placeholder="貼上 API Key，不要貼到對話或 GitHub" />
-          <button id="toggle-key" class="button secondary" type="button">顯示</button>
+      <div id="content-result" class="hidden">
+        <div class="result-toolbar">
+          <p class="field-help">內容模式會要求 Gemini 讀取語音、畫面、畫面文字與數值；每項資料都標示證據來源。</p>
+          <button id="copy-handoff" class="button secondary" type="button">複製給 ChatGPT</button>
         </div>
-        <div class="actions">
-          <button id="test-key" class="button primary" type="button">測試 API Key</button>
-          <button id="clear-key" class="button ghost" type="button">清除</button>
-        </div>
-        <div id="key-status" class="status neutral" role="status" aria-live="polite">尚未測試</div>
-      </section>
+        <section class="analysis-section"><h3>整體摘要</h3><p id="content-overall-summary">—</p></section>
+        <section class="analysis-section"><h3>作者結論</h3><p id="content-author-conclusion">—</p></section>
+        <section class="analysis-section"><h3>指定術語檢查</h3><div id="content-term-checks" class="stack"></div></section>
+        <section class="analysis-section"><h3>時間軸</h3><div id="content-timeline" class="stack"></div></section>
+        <section class="analysis-section"><h3>數值／實測</h3><div id="content-numbers" class="stack"></div></section>
+        <section class="analysis-section"><h3>比較</h3><div id="content-comparisons" class="stack"></div></section>
+        <section class="analysis-section"><h3>問題／Bug／疑慮</h3><div id="content-issues" class="stack"></div></section>
+        <section class="analysis-section"><h3>無法確認</h3><div id="content-uncertain" class="stack"></div></section>
+      </div>
 
-      <section class="card" aria-labelledby="video-title">
-        <div class="section-heading">
-          <div>
-            <p class="step-label">STEP 2</p>
-            <h2 id="video-title">分析公開 YouTube 影片</h2>
-          </div>
-          <span class="badge">只讀取</span>
-        </div>
-
-        <label for="video-url">YouTube 影片網址</label>
-        <input id="video-url" type="url" value="https://www.youtube.com/watch?v=j4VvXkQrzMw" placeholder="https://www.youtube.com/watch?v=..." />
-        <p class="hint">目前預填先前測試的〈Obsessed〉翻唱版；你可以換成任何公開影片。</p>
-        <div class="actions">
-          <button id="analyze-video" class="button primary" type="button">分析曲風</button>
-        </div>
-        <div id="video-status" class="status neutral" role="status" aria-live="polite">請先通過 API Key 測試</div>
-
-        <div id="result" class="result hidden" aria-live="polite">
-          <div class="result-header">
-            <h3>分析結果</h3>
-            <span id="confidence" class="confidence"></span>
-          </div>
-          <dl class="result-grid">
-            <div><dt>歌曲／影片</dt><dd id="result-title">—</dd></div>
-            <div><dt>藝人</dt><dd id="result-artist">—</dd></div>
-            <div><dt>主曲風</dt><dd id="result-primary">—</dd></div>
-            <div><dt>次曲風</dt><dd id="result-secondary">—</dd></div>
-            <div><dt>影片類型</dt><dd id="result-format">—</dd></div>
-            <div><dt>語言</dt><dd id="result-language">—</dd></div>
-            <div><dt>情緒／氛圍</dt><dd id="result-mood">—</dd></div>
-          </dl>
-          <div class="reasoning">
-            <h4>判斷說明</h4>
-            <p id="result-reasoning">—</p>
-          </div>
-          <details>
-            <summary>查看 Gemini 原始 JSON</summary>
-            <pre id="raw-output"></pre>
-          </details>
-        </div>
-      </section>
-
-      <footer>
-        <p>目前版本只做 API 與音樂分類測試，尚未連接 YouTube 播放清單寫入功能。</p>
-        <p><a href="privacy.html">隱私權政策</a></p>
-      </footer>
-    </main>
-    <script src="app.js" defer></script>
-  </body>
+      <details class="raw-details">
+        <summary>查看原始 JSON</summary>
+        <pre id="raw-output"></pre>
+      </details>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
 </html>
